@@ -17,6 +17,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.bukkit.Bukkit;
+
 import de.Linus122.TelegramComponents.ChatMessageToTelegram;
 import de.Linus122.TelegramComponents.Chat;
 import de.Linus122.TelegramComponents.ChatMessageToMc;
@@ -103,6 +105,10 @@ public class Telegram {
 									Main.link(Main.getBackend().getUUIDFromLinkCode(text), chat.getId());
 									Main.getBackend().removeLinkCode(text);
 								} else if (Main.getBackend().getLinkedChats().containsKey(chat.getId())) {
+									if (text.equals("/o") || text.equals("/omikuji")) {
+										Main.dispatchOmikuji(Main.getBackend().getUUIDFromChatID(chat.getId()));
+										return true;
+									}
 									ChatMessageToMc chatMsg = new ChatMessageToMc(
 											Main.getBackend().getUUIDFromChatID(chat.getId()), text, chat.getId());
 									for (TelegramActionListener actionListener : listeners) {
@@ -150,9 +156,11 @@ public class Telegram {
 		new Thread(new Runnable() {
 			public void run() {
 				for (int id : Main.getBackend().ids) {
-					chat.chat_id = id;
-					// post("sendMessage", gson.toJson(chat, Chat.class));
-					sendMsg(chat);
+					if (Main.getBackend().getLinkedChats().containsKey(id)) {
+						chat.chat_id = id;
+						// post("sendMessage", gson.toJson(chat, Chat.class));
+						sendMsg(chat);
+					}
 				}
 			}
 		}).start();

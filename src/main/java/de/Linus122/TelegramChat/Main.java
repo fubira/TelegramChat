@@ -20,6 +20,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.server.BroadcastMessageEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.google.gson.Gson;
@@ -29,6 +30,7 @@ import de.Linus122.TelegramComponents.ChatMessageToTelegram;
 import de.Linus122.TelegramComponents.ChatMessageToMc;
 
 public class Main extends JavaPlugin implements Listener {
+	private static JavaPlugin plugin;
 	private static File datad = new File("plugins/TelegramChat/data.json");
 	private static FileConfiguration cfg;
 
@@ -37,6 +39,7 @@ public class Main extends JavaPlugin implements Listener {
 
 	@Override
 	public void onEnable() {
+		plugin = this;
 		this.saveDefaultConfig();
 		cfg = this.getConfig();
 		Utils.cfg = cfg;
@@ -85,6 +88,7 @@ public class Main extends JavaPlugin implements Listener {
 		save();
 	}
 
+
 	public static void save() {
 		Gson gson = new Gson();
 
@@ -122,8 +126,14 @@ public class Main extends JavaPlugin implements Listener {
 		for (int id : recievers) {
 			telegramHook.sendMsg(id, msgF);
 		}
-		Bukkit.broadcastMessage(msgF.replace("&", "§"));
+		Bukkit.broadcastMessage(msgF/*.replace("&", "§")*/);
+	}
 
+	public static void dispatchOmikuji(UUID uuid) {
+		Bukkit.getScheduler().runTask(plugin, () -> {
+			OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "omikuji draw " + op.getName());
+		});
 	}
 
 	public static void link(UUID player, int chatID) {
@@ -201,6 +211,26 @@ public class Main extends JavaPlugin implements Listener {
 					.escape(Utils.formatMSG("general-message-to-telegram", e.getPlayer().getName(), e.getMessage())[0])
 					.replaceAll("§.", "");
 			telegramHook.sendAll(chat);
+		}
+	}
+
+	@EventHandler
+	public void onBroadcast(BroadcastMessageEvent e) {
+		if (!this.getConfig().getBoolean("enable-broadcast"))
+			return;
+		if (e.isCancelled())
+			return;
+
+		String message = e.getMessage().replaceAll("§.", "");
+		if (message.startsWith("[Omikuji]") || message.startsWith("[放送室]")) {
+			if (telegramHook.connected) {
+				ChatMessageToTelegram chat = new ChatMessageToTelegram();
+				chat.parse_mode = "Markdown";
+				chat.text = Utils
+						.escape(Utils.formatMSG("broadcast-to-telegram", message)[0])
+						.replaceAll("§.", "");
+				telegramHook.sendAll(chat);
+			}
 		}
 	}
 

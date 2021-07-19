@@ -10,6 +10,7 @@ messages:
   setup-msg: "Congratulations, your bot is working! Have fun with this Plugin. Feel free to donate via *PayPal* to keep this project up to date! [PayPal Donation URL](http://donate.spaceio.xyz/)"
   # minecraft message:
   general-message-to-telegram: "%s: %s"
+  broadcast-to-telegram: "%s"
   no-permissions: "&cYou don't have permissions to use this!"
   cant-link-console: "&cSorry, but you can't link the console currently."
   need-to-add-bot-first: "&cPlease add a bot to your server first! /telegram"
@@ -17,3 +18,4 @@ messages:
 enable-joinquitmessages: true
 enable-deathmessages: true
 enable-chatmessages: true
+enable-broadcast: true
