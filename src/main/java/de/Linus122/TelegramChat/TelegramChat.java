@@ -2,14 +2,15 @@ package de.Linus122.TelegramChat;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.logging.Level;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -25,11 +26,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import com.google.gson.Gson;
 
+import de.Linus122.Handlers.BanHandler;
+import de.Linus122.Handlers.CommandHandler;
 import de.Linus122.Metrics.Metrics;
-import de.Linus122.TelegramComponents.ChatMessageToTelegram;
+import de.Linus122.Telegram.Telegram;
+import de.Linus122.Telegram.Utils;
+import de.Linus122.TelegramComponents.Chat;
 import de.Linus122.TelegramComponents.ChatMessageToMc;
+import de.Linus122.TelegramComponents.ChatMessageToTelegram;
 
-public class Main extends JavaPlugin implements Listener {
+public class TelegramChat extends JavaPlugin implements Listener {
 	private static JavaPlugin plugin;
 	private static File datad = new File("plugins/TelegramChat/data.json");
 	private static FileConfiguration cfg;
@@ -52,21 +58,43 @@ public class Main extends JavaPlugin implements Listener {
 		dir.mkdir();
 		data = new Data();
 		if (datad.exists()) {
+			Gson gson = new Gson();
 			try {
-				FileInputStream fin = new FileInputStream(datad);
-				ObjectInputStream ois = new ObjectInputStream(fin);
-				Gson gson = new Gson();
-				data = (Data) gson.fromJson((String) ois.readObject(), Data.class);
-				ois.close();
-				fin.close();
+				FileReader fileReader = new FileReader(datad);
+				StringBuilder sb = new StringBuilder();
+				int c;
+			    while((c = fileReader.read()) !=-1) {
+			    	sb.append((char) c);
+			    }
+
+				data = (Data) gson.fromJson(sb.toString(), Data.class);
+				
+				fileReader.close();
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				// old method for loading the data.yml file
+				try {
+					FileInputStream fin = new FileInputStream(datad);
+					ObjectInputStream ois = new ObjectInputStream(fin);
+					
+					data = (Data) gson.fromJson((String) ois.readObject(), Data.class);
+					ois.close();
+					fin.close();
+				} catch (Exception e2) {
+					e2.printStackTrace();
+				}
+				this.getLogger().log(Level.INFO, "Converted old data.yml");
+				save();
 			}
 		}
 
 		telegramHook = new Telegram();
 		telegramHook.auth(data.getToken());
+		
+		// Ban Handler (Prevents banned players from chatting)
+		telegramHook.addListener(new BanHandler());
+		
+		// Console sender handler, allows players to send console commands (telegram.console permission)
+		// telegramHook.addListener(new CommandHandler(telegramHook, this));
 
 		Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
 			boolean connectionLost = false;
@@ -93,12 +121,10 @@ public class Main extends JavaPlugin implements Listener {
 		Gson gson = new Gson();
 
 		try {
-			FileOutputStream fout = new FileOutputStream(datad);
-			ObjectOutputStream oos = new ObjectOutputStream(fout);
-
-			oos.writeObject(gson.toJson(data));
-			fout.close();
-			oos.close();
+			FileWriter fileWriter = new FileWriter(datad);
+			fileWriter.write(gson.toJson(data));
+			
+			fileWriter.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -117,14 +143,14 @@ public class Main extends JavaPlugin implements Listener {
 		sendToMC(chatMsg.getUuid_sender(), chatMsg.getContent(), chatMsg.getChatID_sender());
 	}
 
-	private static void sendToMC(UUID uuid, String msg, int sender) {
+	private static void sendToMC(UUID uuid, String msg, int sender_chat) {
 		OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
 		List<Integer> recievers = new ArrayList<Integer>();
-		recievers.addAll(Main.data.ids);
-		recievers.remove((Object) sender);
+		recievers.addAll(TelegramChat.data.chat_ids);
+		recievers.remove((Object) sender_chat);
 		String msgF = Utils.formatMSG("general-message-to-mc", op.getName(), msg)[0];
 		for (int id : recievers) {
-			telegramHook.sendMsg(id, msgF);
+			telegramHook.sendMsg(id, msgF.replaceAll("§.", ""));
 		}
 		Bukkit.broadcastMessage(msgF/*.replace("&", "§")*/);
 	}
@@ -136,10 +162,18 @@ public class Main extends JavaPlugin implements Listener {
 		});
 	}
 
-	public static void link(UUID player, int chatID) {
-		Main.data.addChatPlayerLink(chatID, player);
+	public static void link(UUID player, int userID) {
+		TelegramChat.data.addChatPlayerLink(userID, player);
 		OfflinePlayer p = Bukkit.getOfflinePlayer(player);
-		telegramHook.sendMsg(chatID, "Success! Linked " + p.getName());
+		telegramHook.sendMsg(userID, "Success! Linked " + p.getName());
+	}
+	
+	public boolean isChatLinked(Chat chat) {
+		if(TelegramChat.getBackend().getLinkedChats().containsKey(chat.getId())) {
+			return true;
+		}
+		
+		return false;
 	}
 
 	public static String generateLinkToken() {

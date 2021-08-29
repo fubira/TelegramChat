@@ -7,12 +7,17 @@ import java.util.UUID;
 
 public class Data {
 	private String token = "";
-	// Player name // ChatID
+	
+	// User ID : Player ID
 	private HashMap<Integer, UUID> linkedChats = new HashMap<Integer, UUID>();
-	// Player name // RandomInt
+	
+	// Token : Player ID
 	private HashMap<String, UUID> linkCodes = new HashMap<String, UUID>();
-	public List<Integer> ids = new ArrayList<Integer>();
+	
+	public List<Integer> chat_ids = new ArrayList<Integer>();
+	
 	private boolean firstUse = true;
+	
 
 	public String getToken() {
 		return token;
@@ -22,6 +27,7 @@ public class Data {
 		this.token = token;
 	}
 
+	// chats 
 	public HashMap<Integer, UUID> getLinkedChats() {
 		return linkedChats;
 	}
@@ -39,11 +45,11 @@ public class Data {
 	}
 
 	public List<Integer> getIds() {
-		return ids;
+		return chat_ids;
 	}
 
 	public void setIds(List<Integer> ids) {
-		this.ids = ids;
+		this.chat_ids = ids;
 	}
 
 	public boolean isFirstUse() {
@@ -70,8 +76,8 @@ public class Data {
 		linkCodes.remove(code);
 	}
 
-	public UUID getUUIDFromChatID(int chatID) {
-		return linkedChats.get(chatID);
+	public UUID getUUIDFromUserID(int userID) {
+		return linkedChats.get(userID);
 	}
 
 }
