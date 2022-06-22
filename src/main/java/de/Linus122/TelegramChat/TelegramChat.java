@@ -12,6 +12,8 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.logging.Level;
 
+import de.Linus122.Handlers.VanishHandler;
+import de.myzelyam.api.vanish.VanishAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -42,17 +44,25 @@ public class TelegramChat extends JavaPlugin implements Listener {
 
 	private static Data data = new Data();
 	public static Telegram telegramHook;
+	private static TelegramChat instance;
+	private static boolean isSuperVanish;
 
 	@Override
 	public void onEnable() {
 		plugin = this;
 		this.saveDefaultConfig();
 		cfg = this.getConfig();
+		instance = this;
 		Utils.cfg = cfg;
 
 		Bukkit.getPluginCommand("telegram").setExecutor(new TelegramCmd());
 		Bukkit.getPluginCommand("linktelegram").setExecutor(new LinkTelegramCmd());
 		Bukkit.getPluginManager().registerEvents(this, this);
+
+		if (Bukkit.getPluginManager().isPluginEnabled("SuperVanish") || Bukkit.getPluginManager().isPluginEnabled("PremiumVanish")) {
+			isSuperVanish = true;
+			Bukkit.getPluginManager().registerEvents(new VanishHandler(), this);
+		}
 
 		File dir = new File("plugins/TelegramChat/");
 		dir.mkdir();
@@ -143,13 +153,13 @@ public class TelegramChat extends JavaPlugin implements Listener {
 		sendToMC(chatMsg.getUuid_sender(), chatMsg.getContent(), chatMsg.getChatID_sender());
 	}
 
-	private static void sendToMC(UUID uuid, String msg, int sender_chat) {
+	private static void sendToMC(UUID uuid, String msg, long sender_chat) {
 		OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-		List<Integer> recievers = new ArrayList<Integer>();
+		List<Long> recievers = new ArrayList<Long>();
 		recievers.addAll(TelegramChat.data.chat_ids);
 		recievers.remove((Object) sender_chat);
 		String msgF = Utils.formatMSG("general-message-to-mc", op.getName(), msg)[0];
-		for (int id : recievers) {
+		for (long id : recievers) {
 			telegramHook.sendMsg(id, msgF.replaceAll("§.", ""));
 		}
 		Bukkit.broadcastMessage(msgF/*.replace("&", "§")*/);
@@ -162,7 +172,7 @@ public class TelegramChat extends JavaPlugin implements Listener {
 		});
 	}
 
-	public static void link(UUID player, int userID) {
+	public static void link(UUID player, long userID) {
 		TelegramChat.data.addChatPlayerLink(userID, player);
 		OfflinePlayer p = Bukkit.getOfflinePlayer(player);
 		telegramHook.sendMsg(userID, "Success! Linked " + p.getName());
@@ -200,6 +210,10 @@ public class TelegramChat extends JavaPlugin implements Listener {
 	public void onJoin(PlayerJoinEvent e) {
 		if (!this.getConfig().getBoolean("enable-joinquitmessages"))
 			return;
+
+		if(isSuperVanish && VanishAPI.isInvisible(e.getPlayer()))
+			return;
+
 		if (telegramHook.connected) {
 			ChatMessageToTelegram chat = new ChatMessageToTelegram();
 			chat.parse_mode = "Markdown";
@@ -224,6 +238,10 @@ public class TelegramChat extends JavaPlugin implements Listener {
 	public void onQuit(PlayerQuitEvent e) {
 		if (!this.getConfig().getBoolean("enable-joinquitmessages"))
 			return;
+
+		if(isSuperVanish && VanishAPI.isInvisible(e.getPlayer()))
+			return;
+
 		if (telegramHook.connected) {
 			ChatMessageToTelegram chat = new ChatMessageToTelegram();
 			chat.parse_mode = "Markdown";
@@ -266,6 +284,11 @@ public class TelegramChat extends JavaPlugin implements Listener {
 				telegramHook.sendAll(chat);
 			}
 		}
+	}
+
+	public static TelegramChat getInstance()
+	{
+		return instance;
 	}
 
 }
