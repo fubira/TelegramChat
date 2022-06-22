@@ -14,6 +14,8 @@ import java.util.logging.Level;
 
 import de.Linus122.Handlers.VanishHandler;
 import de.myzelyam.api.vanish.VanishAPI;
+import net.md_5.bungee.api.chat.TextComponent;
+
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -162,7 +164,8 @@ public class TelegramChat extends JavaPlugin implements Listener {
 		for (long id : recievers) {
 			telegramHook.sendMsg(id, msgF.replaceAll("§.", ""));
 		}
-		Bukkit.broadcastMessage(msgF/*.replace("&", "§")*/);
+
+		Bukkit.spigot().broadcast(TextComponent.fromLegacyText(msgF/*.replace("&", "§")*/));
 	}
 
 	public static void dispatchOmikuji(UUID uuid) {
