@@ -7,3 +7,7 @@ target
 *.class
 /target
 *.iml
+.project
+.classpath
+.settings/
+*.prefs

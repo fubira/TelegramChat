@@ -7,10 +7,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import de.Linus122.Handlers.VanishHandler;
 import de.myzelyam.api.vanish.VanishAPI;
@@ -23,6 +25,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.BroadcastMessageEvent;
@@ -31,7 +34,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.google.gson.Gson;
 
 import de.Linus122.Handlers.BanHandler;
-import de.Linus122.Handlers.CommandHandler;
 import de.Linus122.Metrics.Metrics;
 import de.Linus122.Telegram.Telegram;
 import de.Linus122.Telegram.Utils;
@@ -118,9 +120,10 @@ public class TelegramChat extends JavaPlugin implements Listener {
 			if (telegramHook.connected) {
 				connectionLost = !telegramHook.getUpdate();
 			}
-		}, 10L, 10L);
-
-		new Metrics(this);
+		}, 0L, 10L);
+		
+		// metrics
+		Bukkit.getScheduler().runTaskAsynchronously(this, () -> new Metrics(this));
 	}
 
 	@Override
@@ -233,6 +236,43 @@ public class TelegramChat extends JavaPlugin implements Listener {
 			ChatMessageToTelegram chat = new ChatMessageToTelegram();
 			chat.parse_mode = "Markdown";
 			chat.text = Utils.formatMSG("death-message", e.getDeathMessage())[0];
+			telegramHook.sendAll(chat);
+		}
+	}
+
+	@EventHandler
+	public void onAdvancement(PlayerAdvancementDoneEvent e) {
+				
+		if (!this.getConfig().getBoolean("enable-advancement"))
+			return;
+		
+		if(e.getAdvancement() == null ||
+				e.getAdvancement().getKey() == null ||
+				e.getAdvancement().getKey().getKey() == null ||
+				!e.getAdvancement().getKey().getKey().contains("/"))
+			return;
+		
+		String type = e.getAdvancement().getKey().getKey().split("/")[0];
+		
+		List<String> advancementTypes = Arrays.stream(this.getConfig().getString("advancement-types").split("\\,")) // split on comma
+                .map(str -> str.trim()) // remove white-spaces
+                .collect(Collectors.toList()); // collect to List
+		
+		if (telegramHook.connected && advancementTypes.contains(type)) {
+			
+			String toDisplay = e.getAdvancement().getKey().getKey()
+					.replace(type + "/", "")
+					.replaceAll("_", " ");
+			
+			if(toDisplay.equals("root"))
+				return;
+			
+			ChatMessageToTelegram chat = new ChatMessageToTelegram();
+			chat.parse_mode = "Markdown";
+			chat.text = Utils.formatMSG(
+					"advancement-message", 
+					e.getPlayer().getDisplayName(), 
+					toDisplay)[0];
 			telegramHook.sendAll(chat);
 		}
 	}

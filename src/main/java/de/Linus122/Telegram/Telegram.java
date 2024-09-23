@@ -20,6 +20,7 @@ import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
 
 import de.Linus122.TelegramComponents.ChatMessageToTelegram;
+import de.Linus122.TelegramComponents.Message;
 import de.Linus122.TelegramChat.TelegramChat;
 import de.Linus122.TelegramComponents.Chat;
 import de.Linus122.TelegramComponents.ChatMessageToMc;
@@ -30,6 +31,8 @@ public class Telegram {
 	public boolean connected = false;
 
 	static int lastUpdate = 0;
+	private boolean firstUpdate = true;
+	
 	public String token;
 
 	private List<TelegramActionListener> listeners = new ArrayList<TelegramActionListener>();
@@ -53,12 +56,12 @@ public class Telegram {
 		try {
 			JsonObject obj = sendGet(String.format(API_URL_GETME, token));
 			authJson = obj;
-			System.out.print("[Telegram] Established a connection with the telegram servers.");
+			TelegramChat.getInstance().getLogger().info("Established a connection with the telegram servers.");
 			connected = true;
 			return true;
 		} catch (Exception e) {
 			connected = false;
-			System.out.print("[Telegram] Sorry, but could not connect to Telegram servers. The token could be wrong.");
+			TelegramChat.getInstance().getLogger().warning("Sorry, but could not connect to Telegram servers. The token could be wrong.");
 			return false;
 		}
 	}
@@ -77,19 +80,22 @@ public class Telegram {
 			for (JsonElement ob : up.getAsJsonArray("result")) {
 				if (ob.isJsonObject()) {
 					Update update = gson.fromJson(ob, Update.class);
-		
+					
+
 					if(lastUpdate == update.getUpdate_id()) return true;
 					lastUpdate = update.getUpdate_id();
+					Message message = update.getMessage();
+					
 
-					if (update.getMessage() != null) {
-						Chat chat = update.getMessage().getChat();
+					if (message != null) {
+						Chat chat = message.getChat();
 
 						if (chat.isPrivate()) {
 							// private chat
 							if (!TelegramChat.getBackend().chat_ids.contains(chat.getId()))
 								TelegramChat.getBackend().chat_ids.add(chat.getId());
 
-							if (update.getMessage().getText() != null) {
+							if (message.getText() != null) {
 								String text = update.getMessage().getText();
 								if (text.length() == 0)
 									return true;
@@ -123,6 +129,7 @@ public class Telegram {
 
 				}
 			}
+			firstUpdate = false;
 		}
 		return true;
 	}
@@ -148,10 +155,19 @@ public class Telegram {
 			}
 			
 			if(!chatMsg.isCancelled()){
-				TelegramChat.sendToMC(chatMsg);
+				boolean skipFirstMessages = TelegramChat.getInstance().getConfig().getBoolean("omit-messages-sent-while-server-was-offline");
+				
+				if(!(skipFirstMessages && firstUpdate)) {
+					TelegramChat.sendToMC(chatMsg);		
+				} else {
+					TelegramChat.getInstance().getLogger().info("Omitted message Telegram->MC because it was sent while the server was offline.");
+				}
 			}
 		} else {
-			this.sendMsg(chat.getId(), Utils.formatMSG("need-to-link")[0]);
+			boolean skipIfNeedToLinkSilent = TelegramChat.getInstance().getConfig().getBoolean("omit-messages-need-to-link");
+			if (!skipIfNeedToLinkSilent) {
+				this.sendMsg(chat.getId(), Utils.formatMSG("need-to-link")[0]);
+			}
 		}
 	}
 
@@ -166,6 +182,8 @@ public class Telegram {
 		for (TelegramActionListener actionListener : listeners) {
 			actionListener.onSendToTelegram(chat);
 		}
+		chat.disable_notification = TelegramChat.getInstance().getConfig().getBoolean("turn-to-silent-notification");
+		
 		Gson gson = new Gson();
 		if(!chat.isCancelled()){
 			post("sendMessage", gson.toJson(chat, ChatMessageToTelegram.class));	
@@ -208,7 +226,7 @@ public class Telegram {
 			reader.close();
 		} catch (Exception e) {
 			reconnect();
-			System.out.print("[Telegram] Disconnected from Telegram, reconnect...");
+			TelegramChat.getInstance().getLogger().info("Disconnected from Telegram, reconnect...");
 		}
 
 	}
