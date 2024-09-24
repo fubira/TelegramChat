@@ -178,6 +178,13 @@ public class TelegramChat extends JavaPlugin implements Listener {
 		});
 	}
 
+	public static void dispatchOsushi(UUID uuid) {
+		Bukkit.getScheduler().runTask(plugin, () -> {
+			OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "osushi draw " + op.getName());
+		});
+	}
+
 	public static void link(UUID player, long userID) {
 		TelegramChat.data.addChatPlayerLink(userID, player);
 		OfflinePlayer p = Bukkit.getOfflinePlayer(player);

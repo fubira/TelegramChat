@@ -146,6 +146,10 @@ public class Telegram {
 				TelegramChat.dispatchOmikuji(TelegramChat.getBackend().getUUIDFromUserID(user_id));
 				return;
 			}
+			if (text.equals("/s") || text.equals("/osushi")) {
+				TelegramChat.dispatchOsushi(TelegramChat.getBackend().getUUIDFromUserID(user_id));
+				return;
+			}
 
 			ChatMessageToMc chatMsg = new ChatMessageToMc(
 					TelegramChat.getBackend().getUUIDFromUserID(user_id), text, chat.getId());
