@@ -324,7 +324,7 @@ public class TelegramChat extends JavaPlugin implements Listener {
 			return;
 
 		String message = e.getMessage().replaceAll("§.", "");
-		if (message.matches("^[Omikuji]|^[Osushi]|^[放送室]")) {
+		if (message.matches("^(\\[Omikuji\\]|\\[Osushi\\]|\\[放送室\\]).*")) {
 			if (telegramHook.connected) {
 				ChatMessageToTelegram chat = new ChatMessageToTelegram();
 				chat.parse_mode = "Markdown";
